@@ -43,32 +43,34 @@ public class XmlSplit {
 		List<String> lines = Lists.newArrayList();
 		List<String> footer = Lists.newArrayList();
 
-		int cnt = 0;
+		int readCnt = 0;
+		int elemCnt = 0;
 		LineIterator iter = FileUtils.lineIterator(new File(ns.getString("input_filepath")));
 		boolean foundOne = false;
 		while (iter.hasNext()) {
 			// sanity check. if we've gone 10,000 lines without hitting an opening tag, puke
-			if (cnt == 100000 && !foundOne) {
-				System.out.println(String.format("Couldn't find opening tag %s after 10K lines. Exiting.", tag));
+			if (readCnt == 10000 && !foundOne) {
+				System.out.println(String.format("Couldn't find opening tag '%s' after 10K lines. Exiting.", tag));
 				System.exit(1);
 			}
 
-			String line = iter.nextLine().trim();
+			String line = iter.nextLine();
+			String lineTrim = line.trim();
 
 			// skip empty lines
-			if (line.isEmpty()) {
+			if (lineTrim.isEmpty()) {
 				continue;
 			}
 
 			// populate header
-			if (!foundOne && !line.startsWith("<" + tag)) {
+			if (!foundOne && !lineTrim.startsWith("<" + tag)) {
 				header.add(line);
 				continue;
 			} else {
 				if (!foundOne) {
 					// write headers for all files!
 					for (File f : output_files) {
-						System.out.println("writing header for " + f.getName());
+						System.out.println("writing header to " + f.getName());
 						FileUtils.writeLines(f, header, true);
 					}
 				}
@@ -76,13 +78,16 @@ public class XmlSplit {
 			}
 
 			lines.add(line);
-			if (line.startsWith("</" + tag)) {
-				if (lines.size() > 0 && lines.size() % 1000 == 0) {
-					// flush
+			if (lineTrim.startsWith("</" + tag)) {
+				elemCnt++;
+				if (elemCnt % 100 == 0) {
+					// TODO: make this configurable!
+					// flush every 100 elements
 					FileUtils.writeLines(output_files[fileIdx], lines, true);
 
 					// TODO: add some debugging/progress print statement here!
-					System.out.println("writing 1K lines to " + output_files[fileIdx].getName());
+					System.out.println(String.format(
+							"writing 100 objects (%s lines) to " + output_files[fileIdx].getName(), lines.size()));
 
 					// clear
 					lines.clear();
@@ -90,18 +95,28 @@ public class XmlSplit {
 					// round-robin
 					fileIdx = (fileIdx + 1) % output_files.length;
 				}
-				
+
 				footer.clear();
 			} else {
 				footer.add(line);
 			}
 
-			cnt++;
+			readCnt++;
+
+			if (readCnt % 1000000 == 0) {
+				System.out.println(String.format("read %s lines", readCnt));
+			}
 		}
+
+		// dump remaining lines to a single file
+		List<String> linesRemaining = lines.subList(0, lines.size() - footer.size());
+		System.out.println(String.format("writing %s objects (%s lines) to " + output_files[fileIdx].getName(),
+				elemCnt % 100, linesRemaining.size()));
+		FileUtils.writeLines(output_files[fileIdx], linesRemaining, true);
 
 		// write footer!
 		for (File f : output_files) {
-			System.out.println("writing header for " + f.getName());
+			System.out.println("writing footer to " + f.getName());
 			FileUtils.writeLines(f, Lists.reverse(footer), true);
 		}
 
