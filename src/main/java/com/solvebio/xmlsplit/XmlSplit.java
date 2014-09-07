@@ -1,7 +1,10 @@
 package com.solvebio.xmlsplit;
 
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.Writer;
 import java.util.List;
 
 import net.sourceforge.argparse4j.ArgumentParsers;
@@ -10,6 +13,7 @@ import net.sourceforge.argparse4j.inf.ArgumentParserException;
 import net.sourceforge.argparse4j.inf.Namespace;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.LineIterator;
 
 import com.google.common.collect.Lists;
@@ -32,10 +36,18 @@ public class XmlSplit {
 
 		long t0 = System.currentTimeMillis();
 
-		int fileIdx = 0;
-		File[] output_files = new File[ns.get("number")];
-		for (int i = 0; i < output_files.length; i++) {
-			output_files[i] = new File(String.format("./sample_output/%s.xml", i));
+		int writerIdx = 0;
+		File[] outputFiles = new File[ns.get("number")];
+		for (int i = 0; i < outputFiles.length; i++) {
+			outputFiles[i] = new File(String.format("./sample_output/%s.xml", i));
+		}
+
+		Writer[] fileWriters = new BufferedWriter[ns.get("number")];
+		for (int i = 0; i < fileWriters.length; i++) {
+			String fname = String.format("./sample_output/%s.xml", i);
+			FileWriter fw = new FileWriter(fname);
+			System.out.println("Creating output file: " + fname);
+			fileWriters[i] = new BufferedWriter(fw);
 		}
 
 		String tag = ns.getString("tag").replace("<", "").replace(">", "");
@@ -68,10 +80,10 @@ public class XmlSplit {
 				continue;
 			} else {
 				if (!foundOne) {
-					// write headers for all files!
-					for (File f : output_files) {
-						System.out.println("writing header to " + f.getName());
-						FileUtils.writeLines(f, header, true);
+					// write headers for all files
+					System.out.println("writing headers...");
+					for (Writer w : fileWriters) {
+						IOUtils.writeLines(header, IOUtils.LINE_SEPARATOR, w);
 					}
 				}
 				foundOne = true;
@@ -79,48 +91,39 @@ public class XmlSplit {
 
 			lines.add(line);
 			if (lineTrim.startsWith("</" + tag)) {
-				elemCnt++;
-				if (elemCnt % 100 == 0) {
-					// TODO: make this configurable!
-					// flush every 100 elements
-					FileUtils.writeLines(output_files[fileIdx], lines, true);
-
-					// TODO: add some debugging/progress print statement here!
-					System.out.println(String.format(
-							"writing 100 objects (%s lines) to " + output_files[fileIdx].getName(), lines.size()));
-
-					// clear
-					lines.clear();
-
-					// round-robin
-					fileIdx = (fileIdx + 1) % output_files.length;
+				if (++elemCnt % 10000 == 0) {
+					System.out.println(String.format("processed %s elements", elemCnt));
 				}
 
+				// write
+				IOUtils.writeLines(lines, IOUtils.LINE_SEPARATOR, fileWriters[(++writerIdx + 1) % fileWriters.length]);
+
+				// round-robin
+				// writerIdx = (writerIdx + 1) % fileWriters.length;
+
+				lines.clear();
 				footer.clear();
 			} else {
 				footer.add(line);
 			}
 
-			readCnt++;
-
-			if (readCnt % 1000000 == 0) {
+			if (++readCnt % 1000000 == 0) {
 				System.out.println(String.format("read %s lines", readCnt));
 			}
 		}
 
-		// dump remaining lines to a single file
-		List<String> linesRemaining = lines.subList(0, lines.size() - footer.size());
-		System.out.println(String.format("writing %s objects (%s lines) to " + output_files[fileIdx].getName(),
-				elemCnt % 100, linesRemaining.size()));
-		FileUtils.writeLines(output_files[fileIdx], linesRemaining, true);
-
 		// write footer!
-		for (File f : output_files) {
-			System.out.println("writing footer to " + f.getName());
-			FileUtils.writeLines(f, Lists.reverse(footer), true);
+		System.out.println("writing footers...");
+		for (Writer w : fileWriters) {
+			IOUtils.writeLines(footer, IOUtils.LINE_SEPARATOR, w);
+		}
+
+		// close all writers
+		for (Writer w : fileWriters) {
+			w.close();
 		}
 
 		long t1 = System.currentTimeMillis();
-		System.out.println(String.format("done! took: %s ms.", t1 - t0));
+		System.out.println(String.format("done! read %s lines. processed %s elements. took: %s ms.", readCnt, elemCnt, t1 - t0));
 	}
 }
