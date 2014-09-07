@@ -72,7 +72,7 @@ public class XmlSplit {
 
 			// sanity check. if we've gone 10,000 lines without hitting an opening tag, puke
 			if (readCnt == 10000 && !foundOne) {
-				System.out.println(String.format("Couldn't find opening tag '%s' after 10K lines. Exiting.", tag));
+				System.err.println(String.format("Couldn't find opening tag '%s' after 10K lines. Exiting.", tag));
 				System.exit(1);
 			}
 
@@ -120,7 +120,7 @@ public class XmlSplit {
 
 		// sanity check. if we've gone 10,000 lines without hitting an opening tag, puke
 		if (!foundOne) {
-			System.out.println(String.format("Finished reading the file but couldn't find opening tag '%s'. Exiting.",
+			System.err.println(String.format("Finished reading the file but couldn't find opening tag '%s'. Exiting.",
 					tag));
 			// TODO: cleanup outputs
 			System.exit(1);
