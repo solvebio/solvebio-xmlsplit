@@ -55,6 +55,10 @@ public class XmlSplit {
 		LineIterator iter = FileUtils.lineIterator(new File(ns.getString("input_filepath")));
 		boolean foundOne = false;
 		while (iter.hasNext()) {
+			if (++readCnt % 1000000 == 0) {
+				System.out.println(String.format("read %s lines", readCnt));
+			}
+
 			// sanity check. if we've gone 10,000 lines without hitting an opening tag, puke
 			if (readCnt == 10000 && !foundOne) {
 				System.out.println(String.format("Couldn't find opening tag '%s' after 10K lines. Exiting.", tag));
@@ -101,10 +105,14 @@ public class XmlSplit {
 			} else {
 				footer.add(line);
 			}
+		}
 
-			if (++readCnt % 1000000 == 0) {
-				System.out.println(String.format("read %s lines", readCnt));
-			}
+		// sanity check. if we've gone 10,000 lines without hitting an opening tag, puke
+		if (!foundOne) {
+			System.out.println(String.format("Finished reading the file but couldn't find opening tag '%s'. Exiting.",
+					tag));
+			// TODO: cleanup outputs
+			System.exit(1);
 		}
 
 		// write footer!
@@ -119,6 +127,7 @@ public class XmlSplit {
 		}
 
 		long t1 = System.currentTimeMillis();
-		System.out.println(String.format("done! read %s lines. processed %s elements. took: %s ms.", readCnt, elemCnt, t1 - t0));
+		System.out.println(String.format("done! read %s lines. processed %s elements. took: %s ms.", readCnt, elemCnt,
+				t1 - t0));
 	}
 }
