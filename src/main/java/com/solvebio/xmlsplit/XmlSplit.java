@@ -37,11 +37,6 @@ public class XmlSplit {
 		long t0 = System.currentTimeMillis();
 
 		int writerIdx = 0;
-		File[] outputFiles = new File[ns.get("number")];
-		for (int i = 0; i < outputFiles.length; i++) {
-			outputFiles[i] = new File(String.format("./sample_output/%s.xml", i));
-		}
-
 		Writer[] fileWriters = new BufferedWriter[ns.get("number")];
 		for (int i = 0; i < fileWriters.length; i++) {
 			String fname = String.format("./sample_output/%s.xml", i);
