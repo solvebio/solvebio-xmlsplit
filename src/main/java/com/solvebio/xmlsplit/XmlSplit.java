@@ -13,6 +13,7 @@ import net.sourceforge.argparse4j.inf.ArgumentParserException;
 import net.sourceforge.argparse4j.inf.Namespace;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.LineIterator;
 
@@ -22,9 +23,9 @@ public class XmlSplit {
 	public static void main(String[] args) throws IOException {
 		ArgumentParser parser = ArgumentParsers.newArgumentParser("XmlSplit").defaultHelp(true)
 				.description("Split a single, large XML document into 'N' smaller documents.");
-		parser.addArgument("-n", "--number").type(Integer.class).setDefault(10).help("number of output files");
-		parser.addArgument("input_filepath").metavar("[ input filepath ]").help("input XML filepath");
-		parser.addArgument("output_directory").metavar("[ output directory ]").help("root XML output directory");
+		parser.addArgument("-n", "--number").type(Integer.class).setDefault(5).help("number of output files");
+		parser.addArgument("inputFilepath").metavar("[ input filepath ]").help("input XML filepath");
+		parser.addArgument("outputDirectory").metavar("[ output directory ]").help("root XML output directory");
 		parser.addArgument("tag").metavar("[ element tag ]").help("the element to split on");
 		Namespace ns = null;
 		try {
@@ -36,13 +37,23 @@ public class XmlSplit {
 
 		long t0 = System.currentTimeMillis();
 
+		// setup paths
+		String inputFilepath = ns.getString("inputFilepath");
+		String outputDirectory = ns.getString("outputDirectory");
+		String filename = FilenameUtils.getBaseName(inputFilepath);
+		String ext = "." + FilenameUtils.getExtension(inputFilepath);
+		String outputFilepathFmt = FilenameUtils.concat(outputDirectory, filename + "_%02d" + ext);
+
+		// ensure output director
+		FileUtils.forceMkdir(new File(outputDirectory));
+
+		// setup writers
 		int writerIdx = 0;
 		Writer[] fileWriters = new BufferedWriter[ns.get("number")];
 		for (int i = 0; i < fileWriters.length; i++) {
-			String fname = String.format("./sample_output/%s.xml", i);
-			FileWriter fw = new FileWriter(fname);
+			String fname = String.format(outputFilepathFmt, i);
 			System.out.println("Creating output file: " + fname);
-			fileWriters[i] = new BufferedWriter(fw);
+			fileWriters[i] = new BufferedWriter(new FileWriter(fname));
 		}
 
 		String tag = ns.getString("tag").replace("<", "").replace(">", "");
@@ -52,7 +63,7 @@ public class XmlSplit {
 
 		int readCnt = 0;
 		int elemCnt = 0;
-		LineIterator iter = FileUtils.lineIterator(new File(ns.getString("input_filepath")));
+		LineIterator iter = FileUtils.lineIterator(new File(inputFilepath));
 		boolean foundOne = false;
 		while (iter.hasNext()) {
 			if (++readCnt % 1000000 == 0) {
