@@ -4,7 +4,7 @@
 
 	<groupId>com.solvebio</groupId>
 	<artifactId>solvebio-xmlsplit</artifactId>
-	<version>0.0.1-DEV</version>
+	<version>1.0.0</version>
 	<packaging>jar</packaging>
 
 	<name>solvebio-xmlsplit</name>
@@ -37,4 +37,42 @@
 			<version>17.0</version>
 		</dependency>
 	</dependencies>
+	<organization>
+		<name>SolveBio</name>
+		<url>www.solvebio.com</url>
+	</organization>
+
+	<build>
+		<plugins>
+			<plugin>
+				<artifactId>maven-jar-plugin</artifactId>
+				<configuration>
+					<archive>
+						<addMavenDescriptor>false</addMavenDescriptor>
+						<compress>true</compress>
+						<manifest>
+							<mainClass>com.solvebio.xmlsplit.XmlSplit</mainClass>
+							<addClasspath>true</addClasspath>
+							<classpathPrefix>lib/</classpathPrefix>
+						</manifest>
+					</archive>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-shade-plugin</artifactId>
+				<executions>
+					<execution>
+						<phase>package</phase>
+						<goals>
+							<goal>shade</goal>
+						</goals>
+					</execution>
+				</executions>
+				<configuration>
+					<finalName>${project.artifactId}-${project.version}</finalName>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
 </project>
